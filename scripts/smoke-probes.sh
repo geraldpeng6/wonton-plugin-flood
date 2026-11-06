@@ -42,7 +42,7 @@ flood_session() (
     printf '%s %s\n' "$user" "$pass" >"$creds"
     curl -fsS --noproxy '*' -b "$jar" -c "$jar" --max-time 20 \
       -H 'Content-Type: application/json' \
-      -d "{\"username\":\"$user\",\"password\":\"$pass\",\"client\":{\"client\":\"qBittorrent\",\"type\":\"web\",\"version\":1,\"url\":\"http://127.0.0.1:1\",\"username\":\"\",\"password\":\"\"}}" \
+      -d "{\"username\":\"$user\",\"password\":\"$pass\",\"client\":{\"client\":\"qBittorrent\",\"type\":\"web\",\"version\":1,\"url\":\"http://127.0.0.1:1\",\"username\":\"\",\"password\":\"\"},\"level\":10}" \
       "$WEB_URL/api/auth/register" >/dev/null
     printf '%s' "$jar"; return 0
   fi
