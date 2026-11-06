@@ -28,31 +28,33 @@ flood_session() (
   out="$(curl -sS --noproxy '*' -b "$jar" -c "$jar" --max-time 20 -w '\n%{http_code}' "$web/api/auth/verify")"
   code="${out##*$'\n'}"
   verify="${out%$'\n'*}"
-  if [ "$code" = 200 ]; then
-    printf '%s' "$jar"; return 0
-  fi
-  if [ "$code" != 401 ]; then
+  if [ "$code" != 200 ] && [ "$code" != 401 ]; then
     echo "flood 会话建立失败：HTTP $code $(head -c 120 <<<"$verify")"; return 1
   fi
-  # auth=none 下 verify 返回 200，到不了这里；走到这里说明是自带账号模式。
-  if grep -q '"initialUser":true' <<<"$verify"; then
-    user="wonton-smoke-$RANDOM"
-    pass="$(head -c 24 /dev/urandom | base64 | tr -d '/+=')"
-    printf '%s %s\n' "$user" "$pass" >"$creds"
+  # verify 的三种形态：200+initialUser:true＝还没有用户（自带账号模式，先注册）；
+  # 200＝auth=none 或已有会话；401＝自带账号且已有用户，用状态文件里的凭据登录。
+  if [ "$code" = 401 ] || grep -q '"initialUser":true' <<<"$verify"; then
+    if [ ! -f "$creds" ]; then
+      user="wonton-smoke-$RANDOM"
+      pass="$(head -c 24 /dev/urandom | base64 | tr -d '/+=')"
+      printf '%s %s\n' "$user" "$pass" >"$creds"
+    else
+      user="$(awk '{print $1}' "$creds")"
+      pass="$(awk '{print $2}' "$creds")"
+    fi
+    if grep -q '"initialUser":true' <<<"$verify"; then
+      curl -fsS --noproxy '*' -b "$jar" -c "$jar" --max-time 20 \
+        -H 'Content-Type: application/json' \
+        -d "{\"username\":\"$user\",\"password\":\"$pass\",\"client\":{\"client\":\"qBittorrent\",\"type\":\"web\",\"version\":1,\"url\":\"http://127.0.0.1:1\",\"username\":\"\",\"password\":\"\"},\"level\":10}" \
+        "$web/api/auth/register" >/dev/null
+      printf '%s' "$jar"; return 0
+    fi
     curl -fsS --noproxy '*' -b "$jar" -c "$jar" --max-time 20 \
       -H 'Content-Type: application/json' \
-      -d "{\"username\":\"$user\",\"password\":\"$pass\",\"client\":{\"client\":\"qBittorrent\",\"type\":\"web\",\"version\":1,\"url\":\"http://127.0.0.1:1\",\"username\":\"\",\"password\":\"\"},\"level\":10}" \
-      "$web/api/auth/register" >/dev/null
-    printf '%s' "$jar"; return 0
+      -d "{\"username\":\"$user\",\"password\":\"$pass\"}" \
+      "$web/api/auth/authenticate" >/dev/null || {
+      echo "flood 测试用户登录失败：$user"; return 1; }
   fi
-  [ -f "$creds" ] || { echo "flood 自带账号模式下没有可用的测试用户凭据（$creds 不存在）"; return 1; }
-  user="$(awk '{print $1}' "$creds")"
-  pass="$(awk '{print $2}' "$creds")"
-  curl -fsS --noproxy '*' -b "$jar" -c "$jar" --max-time 20 \
-    -H 'Content-Type: application/json' \
-    -d "{\"username\":\"$user\",\"password\":\"$pass\"}" \
-    "$web/api/auth/authenticate" >/dev/null || {
-    echo "flood 测试用户登录失败：$user"; return 1; }
   printf '%s' "$jar"
 )
 
@@ -60,15 +62,17 @@ flood_session() (
 # URL 用 192.0.2.x 文档地址，间隔 24h：冒烟期间不会被真正抓取。
 data_write() (
   set -eu
-  local jar web feeds url
+  local jar web feeds out code url
   web="${E2E_WEB_URL:-${SMOKE_WEB_URL:-?}}"
   jar="$(flood_session)"
   url="http://192.0.2.10/wonton-smoke-$(date +%s).xml"
-  feeds="$(curl -sS --noproxy '*' -b "$jar" --max-time 20 \
+  out="$(curl -sS --noproxy '*' -b "$jar" --max-time 20 \
     -X PUT -H 'Content-Type: application/json' \
     -d "{\"label\":\"wonton-smoke\",\"url\":\"$url\",\"interval\":86400}" \
-    "$web/api/feed-monitor/feeds")" || {
-    echo "写入 RSS 订阅失败：$(head -c 200 <<<"$feeds")"; return 1; }
+    -w '\n%{http_code}' "$web/api/feed-monitor/feeds")"
+  code="${out##*$'\n'}"
+  feeds="${out%$'\n'*}"
+  [ "$code" = 200 ] || { echo "写入 RSS 订阅失败：HTTP $code $(head -c 200 <<<"$feeds")"; return 1; }
   echo "已写 RSS 订阅 wonton-smoke：$url"
 )
 
