@@ -67,7 +67,7 @@ x-wonton:
     sso: none
   # RSS 订阅和按 URL 添加种子要从服务器抓取外网地址。
   permissions: [network.egress]
-  # 上游没写最低内存，按开发环境实测取整。
+  # 上游没写最低内存：空闲常驻实测约 254 MB（Node 堆），取整留出工作余量。
   requirements:
     arch: [amd64, arm64]
-    memory: 256M
+    memory: 512M
