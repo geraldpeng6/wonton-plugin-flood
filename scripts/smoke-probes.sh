@@ -56,7 +56,7 @@ flood_session() (
         if command -v docker >/dev/null 2>&1; then
           fc="$(docker ps --format '{{.Names}}' | grep -i flood | head -1)"
           if [ -n "$fc" ]; then
-            docker logs "$fc" 2>&1 | grep '"level":50' | tail -6 >&2 || true
+            docker logs --tail 200 "$fc" 2>&1 | grep -iE '"level":(40|50)|error|register' | tail -8 >&2 || docker logs --tail 15 "$fc" 2>&1 | tail -8 >&2 || true
           fi
         fi
         return 1
