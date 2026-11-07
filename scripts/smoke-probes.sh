@@ -26,6 +26,7 @@ flood_session() (
   if [ "$code" != 200 ] && [ "$code" != 401 ]; then
     echo "flood 会话建立失败：HTTP $code $(head -c 120 <<<"$verify")"; return 1
   fi
+  echo "flood 会话基线：HTTP $code $(grep -o '"initialUser":[a-z]*\|"authMethod":"[a-z]*"' <<<"$verify" | tr '\n' ' ')"
   # verify 的三种形态：200+initialUser:true＝还没有用户（自带账号模式，先注册）；
   # 200＝auth=none 或已有会话；401＝自带账号且已有用户，用 SMOKE_STATE 里的凭据登录。
   if [ "$code" = 401 ] || grep -q '"initialUser":true' <<<"$verify"; then
