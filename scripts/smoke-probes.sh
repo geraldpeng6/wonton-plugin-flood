@@ -38,13 +38,16 @@ flood_session() (
       pass="$(head -c 24 /dev/urandom | base64 | tr -d '/+=')"
     fi
     if grep -q '"initialUser":true' <<<"$verify"; then
-      # flood 的 register 偶发 500（bootstrap 竞态，实测）；重试仍以 200 为准。
-      local ok=1
+      # flood 的 register 在网关后偶发 500（直连同版本 200）；重试并把失败响应体带回日志。
+      local ok=1 body code
       for _ in 1 2 3; do
-        if curl -fsS --noproxy '*' -b "$jar" -c "$jar" --max-time 20 \
+        body="$(curl -sS --noproxy '*' -b "$jar" -c "$jar" --max-time 20 \
           -H 'Content-Type: application/json' \
           -d "{\"username\":\"$user\",\"password\":\"$pass\",\"client\":{\"client\":\"qBittorrent\",\"type\":\"web\",\"version\":1,\"url\":\"http://127.0.0.1:1\",\"username\":\"\",\"password\":\"\"},\"level\":10}" \
-          "$web/api/auth/register" >/dev/null; then ok=0; break; fi
+          -w '\n%{http_code}' "$web/api/auth/register")"
+        code="${body##*$'\n'}"
+        if [ "$code" = 200 ]; then ok=0; break; fi
+        echo "flood 注册第 ${_} 次失败：HTTP $code $(head -c 300 <<<"${body%$'\n'*}")" >&2
         sleep 5
       done
       [ "$ok" = 0 ] || { echo "flood 注册测试用户失败（重试 3 次）" >&2; return 1; }
