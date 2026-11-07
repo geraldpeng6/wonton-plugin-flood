@@ -247,7 +247,7 @@ probes_run() { # [探针名…]：跑探针项（web_assert、identity_check、m
   return 0
 }
 
-# shellcheck disable=SC2154 # root、state、instance 由 dev.sh 加载设置。
+# shellcheck disable=SC2154,SC2031 # root、state、instance 由 dev.sh 加载设置（state 在 dev.sh 子壳里赋值，跨文件追不到）。
 probes_cmd() { # dev.sh probes 的入口：对开发环境里装着的工作区插件跑探针，不起新实例、不卸载、不清理
   need jq nice
   need_env
