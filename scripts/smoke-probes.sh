@@ -42,7 +42,7 @@ flood_session() (
       pass="$(head -c 24 /dev/urandom | base64 | tr -d '/+=')"
     fi
     if grep -q '"initialUser":true' <<<"$verify"; then
-      # flood 的 register 在网关后偶发 500（直连同版本 200）；重试并把失败响应体带回日志。
+      # 注册失败就重试，并把响应体和诊断带回日志（见下方失败分支）。
       local ok=1 body code
       for _ in 1 2 3; do
         body="$(curl -sS --noproxy '*' -b "$jar" -c "$jar" --max-time 20 \
