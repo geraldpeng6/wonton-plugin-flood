@@ -48,6 +48,7 @@ flood_session() (
         code="${body##*$'\n'}"
         if [ "$code" = 200 ]; then ok=0; break; fi
         echo "flood 注册第 ${_} 次失败：HTTP $code $(head -c 300 <<<"${body%$'\n'*}")" >&2
+        echo "flood 注册载荷：user=[$user] pass=[${#pass} 字符:$(printf %s "$pass" | od -c | head -2 | tr '\n' ' ')]" >&2
         sleep 5
       done
       [ "$ok" = 0 ] || {
@@ -56,7 +57,8 @@ flood_session() (
         if command -v docker >/dev/null 2>&1; then
           fc="$(docker ps --format '{{.Names}}' | grep -i flood | head -1)"
           if [ -n "$fc" ]; then
-            docker logs --tail 200 "$fc" 2>&1 | grep -iE '"level":(40|50)|error|register' | tail -8 >&2 || docker logs --tail 15 "$fc" 2>&1 | tail -8 >&2 || true
+            echo "flood 容器 env：$(docker exec "$fc" sh -c 'env' 2>/dev/null | grep -E 'FLOOD|PROXY|NODE|UV_' | tr '\n' ' ')" >&2
+            docker logs --tail 30 "$fc" 2>&1 | grep -iE '"level":(40|50)|error|register' | tail -8 >&2 || true
           fi
         fi
         return 1
