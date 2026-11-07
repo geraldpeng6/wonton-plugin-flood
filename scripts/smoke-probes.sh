@@ -38,10 +38,16 @@ flood_session() (
       pass="$(head -c 24 /dev/urandom | base64 | tr -d '/+=')"
     fi
     if grep -q '"initialUser":true' <<<"$verify"; then
-      curl -fsS --noproxy '*' -b "$jar" -c "$jar" --max-time 20 \
-        -H 'Content-Type: application/json' \
-        -d "{\"username\":\"$user\",\"password\":\"$pass\",\"client\":{\"client\":\"qBittorrent\",\"type\":\"web\",\"version\":1,\"url\":\"http://127.0.0.1:1\",\"username\":\"\",\"password\":\"\"},\"level\":10}" \
-        "$web/api/auth/register" >/dev/null
+      # flood 的 register 偶发 500（bootstrap 竞态，实测）；重试仍以 200 为准。
+      local ok=1
+      for _ in 1 2 3; do
+        if curl -fsS --noproxy '*' -b "$jar" -c "$jar" --max-time 20 \
+          -H 'Content-Type: application/json' \
+          -d "{\"username\":\"$user\",\"password\":\"$pass\",\"client\":{\"client\":\"qBittorrent\",\"type\":\"web\",\"version\":1,\"url\":\"http://127.0.0.1:1\",\"username\":\"\",\"password\":\"\"},\"level\":10}" \
+          "$web/api/auth/register" >/dev/null; then ok=0; break; fi
+        sleep 5
+      done
+      [ "$ok" = 0 ] || { echo "flood 注册测试用户失败（重试 3 次）" >&2; return 1; }
       mkdir -p "$(dirname "$creds")"
       printf '%s %s\n' "$user" "$pass" >"$creds"
     else
@@ -62,7 +68,8 @@ data_write() (
   local web="${SMOKE_WEB_URL:?SMOKE_WEB_URL 未导出}"
   local state="${SMOKE_STATE:?SMOKE_STATE 未导出}"
   local jar out code feeds url user pass
-  jar="$(flood_session)"
+  jar="$(flood_session)" || return 1
+  jar="$(printf %s "$jar")"
   url="http://192.0.2.10/wonton-smoke-$(date +%s).xml"
   user="$(awk 'NR==1{print $1}' "$state")"
   pass="$(awk 'NR==1{print $2}' "$state")"
@@ -85,7 +92,7 @@ data_check() (
   local jar feeds url
   url="$(awk 'NR==2{print $0}' "$state")"
   [ -n "$url" ] || { echo "SMOKE_STATE 里没有订阅地址（data_write 没跑过）"; return 1; }
-  jar="$(flood_session)"
+  jar="$(flood_session)" || return 1
   feeds="$(curl -sS --noproxy '*' -b "$jar" --max-time 20 -w '\n%{http_code}' "$web/api/feed-monitor/feeds")"
   code="${feeds##*$'\n'}"
   [ "$code" = 200 ] || { echo "读 RSS 订阅失败：HTTP $code $(head -c 200 <<<"${feeds%$'\n'*}")"; return 1; }
