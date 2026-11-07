@@ -1,78 +1,73 @@
-# 示例插件：nginx 显示一个网页，向登录的人问好。改成自己的应用见 https://github.com/geraldpeng6/wonton-docs/blob/main/develop.md#写插件。
+# Flood：经云吞网关打开的种子下载前端，经 torrent_client 能力连接 qBittorrent 插件。
 services:
-  web:
-    # 镜像按摘要固定（多架构镜像写清单列表的摘要），标签只给人看。
-    image: nginx:1.31.7-alpine@sha256:892bb2152464f0c5d8972593a5f5afaf8054552580b699d95f8ff4af08c2d33d
+  flood:
+    # 上游官方镜像（https://github.com/jesec/flood，Docker Hub jesec/flood），摘要按清单列表固定。
+    image: docker.io/jesec/flood:4.16.4@sha256:72bdc95ff160e1f6b8ad72c171eff53f0bab8aa651389ca710ffff170278390a
+    user: "${PUID}:${PGID}"
     environment:
-      # 网关代登录：SSI 回显的 Remote-User 只信核心带来的。官方镜像启动时对 templates 目录里的
-      # *.template 做 envsubst，把下面的地址换进 nginx 配置（见 web/default.conf.template）。
-      WONTON_CORE_ADDRESS: ${WONTON_CORE_ADDRESS}
-    # 包里的文件经 configs 交给容器（核心在启动前写进去），不能用卷挂载。
-    configs:
-      - source: site
-        target: /etc/nginx/templates/default.conf.template
-      - source: page
-        target: /usr/share/nginx/html/index.html
-      - source: tokens
-        target: /usr/share/nginx/html/tokens.css
+      FLOOD_OPTION_RUNDIR: /data
+      TZ: ${TZ}
+      # torrent_client 能力：核心把 <能力>.wonton.internal 转发到用户选的下载器插件（qBittorrent Web API v2），
+      # 免凭据。能力依赖的字段还没定稿，核心不会注入：留空时回退 flood 自带账号（sso: none）。
+      WONTON_TORRENT_CLIENT_URL: "${WONTON_TORRENT_CLIENT_URL:-}"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - if [ -n "$$WONTON_TORRENT_CLIENT_URL" ]; then export FLOOD_OPTION_AUTH=none FLOOD_OPTION_QBURL="$$WONTON_TORRENT_CLIENT_URL" FLOOD_OPTION_QBUSER= FLOOD_OPTION_QBPASS=; fi; exec /sbin/tini -- flood
+    volumes:
+      - ${WONTON_APP_DATA}/flood:/data
+    read_only: true
+    tmpfs:
+      - /tmp
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      # 根页面不需要应用会话；检查 Flood 已真正监听并能返回前端页面。
+      # -Y off：busybox wget 不看 no_proxy，出口代理变量存在时也会被它劫持（规范“网络”一节）。
+      test: ["CMD", "wget", "-q", "-Y", "off", "-T", "5", "-O", "/dev/null", "http://127.0.0.1:3000/"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       start_period: 30s
       start_interval: 1s
 
-configs:
-  site:
-    file: web/default.conf.template
-  page:
-    file: web/index.html
-  tokens:
-    file: web/tokens.css
-
 x-wonton:
-  spec: "0.5"
-  # 换成你自己的：反向域名形式，装上以后不能改。
-  id: app.example.hello
-  version: 0.1.1
+  spec: "0.6"
+  id: app.flood.flood
+  version: 0.1.0
   kind: app
-  title: { zh: 你好, en: Hello }
-  description: { zh: 向登录的人问好的示例网页, en: An example page that greets whoever is signed in }
+  title: { en: Flood }
+  description:
+    zh: 统一界面管理 BT 下载，连接家里的 qBittorrent
+    en: A unified BitTorrent front end for the qBittorrent at home
   icon: icon.svg
   notices: [NOTICE]
-  screenshots: [screenshots/home.png]
-  author: { name: Example }
-  homepage: https://nginx.org
-  # 应用（这里是 nginx）的许可证；插件包自己的许可证写在仓库的 LICENSE 里。
-  license: BSD-2-Clause
+  screenshots: [screenshots/torrents.png, screenshots/details.png, screenshots/add.png]
+  author: { name: geraldpeng6, url: https://github.com/geraldpeng6 }
+  homepage: https://flood.js.org
+  # 应用（Flood）的许可证；插件包自己的许可证写在仓库的 LICENSE 里。
+  license: GPL-3.0-only
   tags:
-    zh: [工具]
-    en: [Tools]
+    zh: [下载, BT]
+    en: [Downloads, BitTorrent]
   about:
     zh: |
-      一个示例网页：登录以后，页面会向你问好。新建插件时可以照着改。
+      Flood 是一个现代的种子下载前端：添加磁力链接和种子，按进度、速度和标签整理任务，订阅 RSS 自动下载。
+
+      它自己不下载，需要配合下载器使用。装好 qBittorrent 插件并在出网代理设置下方的能力里选它作下载器后，Flood 自动连接，打开即用、不用再登录一次。
     en: |
-      An example page: once you are signed in, the page says hello. Copy it as a starting point for a new plugin.
-  release_notes: { zh: 名字和说明更新。, en: Product name and description update. }
+      Flood is a modern BitTorrent front end: add magnets and torrents, organize tasks by progress, speed and tags, and subscribe to RSS feeds for automatic downloads.
+
+      It does not download by itself and needs a client. After installing the qBittorrent plugin and picking it as the torrent client in the capability settings, Flood connects automatically — open and use, no second login.
+  release_notes:
+    zh: "首版：连接 qBittorrent 插件（经 torrent_client 能力，免二次登录），自带账号登录作为过渡。"
+    en: "First release: connects to the qBittorrent plugin via the torrent_client capability without a second login; own-account login as a fallback."
   webui:
-    service: web
-    port: 80
-    # 示例页回显网关注入的用户名，见 https://github.com/geraldpeng6/wonton-docs/blob/main/plugin-spec.md#网关代登录sso-proxy。
-    sso: proxy
-    proxy:
-      headers:
-        Remote-User: "{user}"
-  # 能放到底栏的页面，见 https://github.com/geraldpeng6/wonton-docs/blob/main/plugin-spec.md#底栏页面tabs。放不放由用户决定。
-  tabs:
-    - id: home
-      title: { zh: 主页, en: Home }
-      icon: tabs/home.svg
-      icon_selected: tabs/home-fill.svg
-      path: /
-      # 这个页面没做适配，用默认的 inset：页面夹在 App 的栏中间，不会被挡。
-      # 想让内容从栏下滚过，写 layout: edge-to-edge，并用 --wonton-inset-* 留出栏的位置。
-  permissions: []
-  # 上游 nginx 官方镜像，amd64 和 arm64 都有；上游没写最低内存，按本机空闲实测取整（实测约 24M，取 64M）。
+    service: flood
+    port: 3000
+    # Flood 不支持 OIDC 和代登录请求头。有下载器连接时用上游自带的 auth=none（免登录）；没有时保留
+    # 自带账号，第一次打开在应用里注册。网关挡在前面，只有主人打得开。
+    sso: none
+  # RSS 订阅和按 URL 添加种子要从服务器抓取外网地址。
+  permissions: [network.egress]
+  # 上游没写最低内存：空闲常驻实测约 254 MB（Node 堆），取整留出工作余量。
   requirements:
     arch: [amd64, arm64]
-    memory: 64M
+    memory: 512M
