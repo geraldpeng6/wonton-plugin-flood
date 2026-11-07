@@ -30,10 +30,14 @@ flood_session() (
   # verify 的三种形态：200+initialUser:true＝还没有用户（自带账号模式，先注册）；
   # 200＝auth=none 或已有会话；401＝自带账号且已有用户，用 SMOKE_STATE 里的凭据登录。
   if [ "$code" = 401 ] || grep -q '"initialUser":true' <<<"$verify"; then
+    # 套件会把 SMOKE_STATE 预创建成空文件：读到空字段时按没有凭据处理，现场生成。
+    user=""
+    pass=""
     if [ -f "$creds" ]; then
       user="$(awk 'NR==1{print $1}' "$creds")"
       pass="$(awk 'NR==1{print $2}' "$creds")"
-    else
+    fi
+    if [ -z "$user" ] || [ -z "$pass" ]; then
       user="wonton-smoke-$RANDOM"
       pass="$(head -c 24 /dev/urandom | base64 | tr -d '/+=')"
     fi
