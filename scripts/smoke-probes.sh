@@ -73,13 +73,13 @@ flood_session() (
 data_write() (
   set -eu
   local web="${SMOKE_WEB_URL:?SMOKE_WEB_URL 未导出}"
-  local state="${SMOKE_STATE:?SMOKE_STATE 未导出}"
+  local creds_file="${SMOKE_STATE:?SMOKE_STATE 未导出}"
   local jar out code feeds url user pass
   jar="$(flood_session)" || return 1
   jar="$(printf %s "$jar")"
   url="http://192.0.2.10/wonton-smoke-$(date +%s).xml"
-  user="$(awk 'NR==1{print $1}' "$state")"
-  pass="$(awk 'NR==1{print $2}' "$state")"
+  user="$(awk 'NR==1{print $1}' "$creds_file")"
+  pass="$(awk 'NR==1{print $2}' "$creds_file")"
   out="$(curl -sS --noproxy '*' -b "$jar" --max-time 20 \
     -X PUT -H 'Content-Type: application/json' \
     -d "{\"label\":\"wonton-smoke\",\"url\":\"$url\",\"interval\":86400}" \
@@ -87,7 +87,7 @@ data_write() (
   code="${out##*$'\n'}"
   feeds="${out%$'\n'*}"
   [ "$code" = 200 ] || { echo "写入 RSS 订阅失败：HTTP $code $(head -c 200 <<<"$feeds")"; return 1; }
-  printf '%s %s\n%s\n' "$user" "$pass" "$url" >"$state"
+  printf '%s %s\n%s\n' "$user" "$pass" "$url" >"$creds_file"
   echo "已写 RSS 订阅 wonton-smoke：$url"
 )
 
@@ -95,9 +95,9 @@ data_write() (
 data_check() (
   set -eu
   local web="${SMOKE_WEB_URL:?SMOKE_WEB_URL 未导出}"
-  local state="${SMOKE_STATE:?SMOKE_STATE 未导出}"
+  local creds_file="${SMOKE_STATE:?SMOKE_STATE 未导出}"
   local jar feeds url
-  url="$(awk 'NR==2{print $0}' "$state")"
+  url="$(awk 'NR==2{print $0}' "$creds_file")"
   [ -n "$url" ] || { echo "SMOKE_STATE 里没有订阅地址（data_write 没跑过）"; return 1; }
   jar="$(flood_session)" || return 1
   feeds="$(curl -sS --noproxy '*' -b "$jar" --max-time 20 -w '\n%{http_code}' "$web/api/feed-monitor/feeds")"
