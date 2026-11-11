@@ -1,6 +1,6 @@
 # 云吞插件：Flood
 
-开发流程见[插件开发指南](https://github.com/geraldpeng6/wonton-docs/blob/main/develop.md)。
+开发流程见[插件开发指南](https://github.com/wontonapp/wonton-docs/blob/main/develop.md)。
 
 云吞（Wonton）的 Flood 插件：现代界面的种子下载前端，添加磁力链接和种子、按标签整理任务、订阅 RSS 自动下载。Flood 自己不下载，它连接一个下载器：在云吞里就是 qBittorrent 插件。
 
