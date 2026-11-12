@@ -1,4 +1,4 @@
-# scripts/smoke.sh / e2e/smoke.sh source 本文件，不单独执行。
+# scripts/smoke.sh source 本文件，不单独执行。
 # shellcheck shell=bash
 # Flood：sso=none。flood 没有 OIDC 和代登录请求头支持：
 # - 核心注入 WONTON_TORRENT_CLIENT_URL 时走上游自带的 auth=none，无应用登录页，主人身份由云吞网关认证；
