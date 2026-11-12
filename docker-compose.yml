@@ -8,7 +8,7 @@ services:
       FLOOD_OPTION_RUNDIR: /data
       TZ: ${TZ}
       # torrent_client 能力：核心把 <能力>.wonton.internal 转发到用户选的下载器插件（qBittorrent Web API v2），
-      # 免凭据。能力依赖的字段还没定稿，核心不会注入：留空时回退 flood 自带账号（sso: none）。
+      # 免凭据。不支持能力依赖的核心不会注入：留空时回退 flood 自带账号（sso: none）。
       WONTON_TORRENT_CLIENT_URL: "${WONTON_TORRENT_CLIENT_URL:-}"
     entrypoint:
       - /bin/sh
