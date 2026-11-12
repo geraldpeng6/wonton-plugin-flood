@@ -33,10 +33,10 @@ x-wonton:
   id: app.flood.flood
   version: 0.1.0
   kind: app
-  title: { en: Flood }
+  title: { zh: BT 下载界面（Flood）, en: Torrent Dashboard (Flood) }
   description:
-    zh: 统一界面管理 BT 下载，连接家里的 qBittorrent
-    en: A unified BitTorrent front end for the qBittorrent at home
+    zh: 给 BT 下载器换一个更好看的界面：任务按进度、速度、标签整理，还能订阅更新自动下载。它自己不下载，要先装 qBittorrent。
+    en: "A nicer-looking dashboard for your torrents: sort tasks by progress, speed and tags, and subscribe to feeds for automatic downloads. It doesn't download on its own — install qBittorrent first."
   icon: icon.svg
   notices: [NOTICE]
   screenshots: [screenshots/torrents.png, screenshots/details.png, screenshots/add.png]
@@ -49,11 +49,11 @@ x-wonton:
     en: [Downloads, BitTorrent]
   about:
     zh: |
-      Flood 是一个现代的种子下载前端：添加磁力链接和种子，按进度、速度和标签整理任务，订阅 RSS 自动下载。
+      Flood 是给 BT 下载换界面的工具：添加磁力链接和种子，按进度、速度和标签整理任务，订阅更新自动下载。
 
       它自己不下载，需要配合下载器使用。装好 qBittorrent 插件并在出网代理设置下方的能力里选它作下载器后，Flood 自动连接，打开即用、不用再登录一次。
     en: |
-      Flood is a modern BitTorrent front end: add magnets and torrents, organize tasks by progress, speed and tags, and subscribe to RSS feeds for automatic downloads.
+      Flood is a modern dashboard for your torrent downloads: add magnet links and torrents, sort tasks by progress, speed and tags, and subscribe to feeds for automatic downloads.
 
       It does not download by itself and needs a client. After installing the qBittorrent plugin and picking it as the torrent client in the capability settings, Flood connects automatically — open and use, no second login.
   release_notes:
