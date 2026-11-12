@@ -12,7 +12,7 @@
 2. 在云吞的插件能力设置里，把 `torrent_client`（qBittorrent Web API v2）的提供方选成 qBittorrent 插件。
 3. 打开 Flood：核心把 `torrent_client.wonton.internal` 转发到 qBittorrent，并注入 `WONTON_TORRENT_CLIENT_URL`。Flood 用上游自带的 `auth=none` 模式预置这条连接，打开就是任务列表，没有第二次登录。
 
-能力依赖还没接入的旧版核心上，`WONTON_TORRENT_CLIENT_URL` 不会注入，Flood 保留自带账号；此时它是一个没有下载器的界面，装好新核心后自动切换。
+不支持能力依赖的旧版核心不会注入 `WONTON_TORRENT_CLIENT_URL`，Flood 保留自带账号；此时它是一个没有下载器的界面，核心升级后自动切换。
 
 ## 图标来源与许可
 
